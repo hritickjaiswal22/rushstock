@@ -1,0 +1,13 @@
+POST /users - SignUp
+POST /login - Login
+
+GET /products
+GET /products/{productId}
+
+GET /sales - returns live/upcoming sales from invokation time
+POST /sales - only admin can create; buisness logic to handle duplicate sales for a given product;
+
+POST /bookings - will take sale_id, user_id from auth token, quantity to buy , transaction with FOR UPDATE + atomic level check update using WHERE inventory.quantity > request.quantity
+
+Auth using access + refresh token
+Auth middleware
