@@ -1,2 +1,3 @@
 System can have multiple sales live/upcoming simultaneously
 For a product only 1 live/upcoming can exist
+One booking per user per sale.
