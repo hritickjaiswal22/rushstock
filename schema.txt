@@ -4,7 +4,7 @@ users {
     id: UUID; (primary-key,unique,not-null)
     email: VARCHAR(100); (unique,not-null)
     name: VARCHAR(100); (not-null)
-    role: USER_ROLE; (not-null)
+    role: USER_ROLE; (not-null,DEFAULT 'USER')
     created_at: TIMESTAMPTZ; (not-null)
     updated_at: TIMESTAMPTZ; (not-null)
 }
@@ -24,20 +24,13 @@ sales {
     product_id: UUID; (foreign-key,not-null)
     start: TIMESTAMPTZ; (not-null)
     end: TIMESTAMPTZ; (not-null)
+    stock_quantity: INT(+ve only,not-null)
     unit_price: NUMERIC(15,2); (not-null)
     created_at: TIMESTAMPTZ; (not-null)
     updated_at: TIMESTAMPTZ; (not-null)
 
     index on (start,end)
     (product_id,start,end) must be unique - actually it will be more nuanced that a sale for a product should not be created when another sale is live/upcoming for that same product
-}
-
-inventory {
-    id: UUID; (primary-key,unique,not-null)
-    product_id: UUID; (foreign-key,unique,not-null) // Have made unique so that next time if a sale is to be created only inventory will be updated/added
-    quantity: SMALLINT; (+ve only,not-null)
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
 }
 
 bookings {
