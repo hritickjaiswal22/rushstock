@@ -1,0 +1,28 @@
+@baseUrl = http://localhost:5000/api/v1/auth
+
+### Signup
+POST {{baseUrl}}/signup
+Content-Type: application/json
+
+{
+  "name":"abc",
+  "email":"abc@gmail.com",
+  "password":"abc@gmail.com"
+}
+
+### Signin
+POST {{baseUrl}}/signin
+Content-Type: application/json
+
+{
+  "email":"abc@gmail.com",
+  "password":"abc@gmail.com"
+}
+
+### Refresh
+POST {{baseUrl}}/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhOGNmMGVjYS1lMDU3LTRkNTMtYTE3Yi0zMTk3NjYyOTIxMGYiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc4ODg2MjgzMSwiZXhwIjoxNzg5NDY3NjMxfQ.nIoJsy5d-zY92txOhEdLzj1cEME9Mmpln5nDNSb34sM"
+}
