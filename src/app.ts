@@ -1,11 +1,12 @@
 import express from "express";
 import { errorHandler } from "./middlewares/errorHandler";
+import { authRouter } from "./routes/auth";
 
 const app = express();
 
-app.get("/", (req, res) => {
-  res.send("Hello from Express + TypeScript!");
-});
+app.use(express.json());
+
+app.use("/api/v1/auth", authRouter);
 
 app.use(errorHandler);
 
