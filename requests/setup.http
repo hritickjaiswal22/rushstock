@@ -1,0 +1,14 @@
+@baseUrl = http://localhost:5000
+
+### 1. Get all items
+GET {{baseUrl}}/
+Accept: application/json
+
+# ### 2. Create a new item
+# POST {{baseUrl}}/api/items
+# Content-Type: application/json
+
+# {
+#   "name": "Local Test Item",
+#   "price": 49.99
+# }
