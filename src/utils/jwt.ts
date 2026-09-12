@@ -1,4 +1,4 @@
-import { sign, verify } from "jsonwebtoken";
+import { sign, verify, SignOptions } from "jsonwebtoken";
 import { Role } from "../generated/prisma/enums";
 
 export interface JWTPayloadType {
@@ -11,7 +11,8 @@ const refreshSecretKey = process.env.JWT_REFRESH_SECRET as string;
 
 export function generateAccessToken(payload: JWTPayloadType) {
   const token = sign(payload, accessSecretKey, {
-    expiresIn: "15m",
+    expiresIn: (process.env.ACCESS_TOKEN_EXPIRES_IN ||
+      "15m") as SignOptions["expiresIn"],
   });
 
   return token;
@@ -19,7 +20,8 @@ export function generateAccessToken(payload: JWTPayloadType) {
 
 export function generateRefreshToken(payload: JWTPayloadType) {
   const token = sign(payload, refreshSecretKey, {
-    expiresIn: "168h",
+    expiresIn: (process.env.REFRESH_TOKEN_EXPIRES_IN ||
+      "168h") as SignOptions["expiresIn"],
   });
 
   return token;
