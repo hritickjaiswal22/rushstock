@@ -1,5 +1,7 @@
 import { PostBookingBody } from "../validators/bookings";
 import { prisma } from "../lib/prisma";
+import { Prisma } from "../generated/prisma/client";
+import { ConflictError } from "../utils/ApiError";
 
 export async function postBooking(body: PostBookingBody, userId: string) {
   try {
@@ -55,7 +57,15 @@ export async function postBooking(body: PostBookingBody, userId: string) {
 
     return result;
   } catch (error) {
-    // TODO: Handle various cases of errors while testing
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      throw new ConflictError(
+        "The requested item is currently out of stock.",
+        "OUT_OF_STOCK",
+      );
+    }
 
     throw error;
   }
