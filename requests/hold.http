@@ -1,0 +1,11 @@
+@baseUrl = http://localhost:5000/api/v1/holds
+
+### Create sales
+POST {{baseUrl}}/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwMTI4MjIwOC05NjkwLTQzNmMtOTc3MC1hZjM1NDkzNmRmODgiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc4OTM4OTI0NSwiZXhwIjoxNzg5OTk0MDQ1fQ.dhBxikxZ_hCJGiYk49ifRsrQHPcf8VS57Bb9jxdUPwo
+
+{
+    "saleId": "a0399729-bddb-4f3f-b051-985ce6b7c6a9",
+    "quantity": 3
+}

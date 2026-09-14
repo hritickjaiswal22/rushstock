@@ -1,6 +1,11 @@
 import { PostHoldBody } from "../validators/holds";
 import { prisma } from "../lib/prisma";
 import { Prisma } from "../generated/prisma/client";
+import {
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+} from "../utils/ApiError";
 
 export async function postHold(body: PostHoldBody, userId: string) {
   try {
@@ -58,6 +63,44 @@ export async function postHold(body: PostHoldBody, userId: string) {
 
     return result;
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      const sale = await prisma.sale.findUnique({
+        where: {
+          id: body.saleId,
+        },
+      });
+      const now = new Date();
+
+      if (!sale)
+        throw new NotFoundError(
+          "Sale not found - Invalid Sale Id provided",
+          "SALE_NOT_FOUND",
+        );
+
+      if (sale.stockQuantity < body.quantity)
+        throw new BadRequestError(
+          "The requested item is currently out of stock.",
+          "OUT_OF_STOCK",
+        );
+
+      if (now < sale.startAt || now > sale.endAt) {
+        throw new BadRequestError("The sale is not live", "SALE_NOT_LIVE");
+      }
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new ConflictError(
+        "The requested item is currently in active hold state. Please complete payment",
+        "ACTIVE_HOLD",
+      );
+    }
+
     throw error;
   }
 }

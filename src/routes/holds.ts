@@ -5,13 +5,13 @@ import { validate } from "../middlewares/validate";
 import { postHoldSchema } from "../validators/holds";
 import { postHoldController } from "../controllers/holds";
 
-const bookingsRouter = Router(); // Initialize the router instance
+const holdsRouter = Router(); // Initialize the router instance
 
-bookingsRouter.post(
+holdsRouter.post(
   "/",
   authMiddleware,
   validate(postHoldSchema),
   postHoldController,
 );
 
-export { bookingsRouter };
+export { holdsRouter };
