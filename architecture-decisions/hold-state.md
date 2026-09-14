@@ -68,3 +68,133 @@ Couldn't think of any 😞
 # Trade-off
 
 Couldn't think of any 😞
+
+# Review
+
+# Mistakes
+
+There are **three important design mistakes**.
+
+## Mistake #1 — `FAILED` is the wrong Hold state
+
+You said:
+
+> failed means no successful payment happened during active hold period, hence hold expired
+
+That's actually **expired**, not failed.
+
+Imagine:
+
+```text
+10:00  Hold created
+10:02  Payment fails
+10:03  User retries
+10:04  Payment succeeds
+```
+
+Should the Hold become `FAILED` at 10:02?
+
+**No.**
+
+The payment failed, but the inventory reservation is still valid.
+
+So these are different concepts:
+
+```text
+HOLD
+    ACTIVE
+    EXPIRED
+    CONVERTED
+
+PAYMENT
+    PENDING
+    FAILED
+    SUCCEEDED
+```
+
+We don't need to implement Payment yet, but we should avoid baking that confusion into Hold.
+
+---
+
+## Mistake #2 — The worker shouldn't "check whether payment succeeded"
+
+This was the bigger conceptual issue.
+
+You imagined:
+
+```text
+worker
+  ↓
+check payment
+  ↓
+success?
+```
+
+But expiration is a **time-based background task**.
+
+Payment is an **event/request-driven process**.
+
+Eventually the architecture should look more like:
+
+```text
+                 ┌───────────────┐
+                 │     Hold      │
+                 │    ACTIVE     │
+                 └───────┬───────┘
+                         │
+             ┌───────────┴───────────┐
+             ↓                       ↓
+       User pays                 Time passes
+             ↓                       ↓
+      Payment flow              Expiry worker
+             ↓                       ↓
+      payment result            expires hold
+             ↓                       ↓
+       convert hold             restore stock
+```
+
+So the worker's job is **not payment processing**.
+
+Its initial job is simply:
+
+> Find expired ACTIVE holds and release their inventory.
+
+We'll add simulated payment afterward.
+
+---
+
+## Mistake #3 — You were jumping into race conditions too early
+
+You started thinking:
+
+> What if payment succeeds exactly when the worker expires the hold?
+
+That's a **real problem**, and we'll absolutely handle it.
+
+But it belongs to the **payment + expiry stage**, not Hold creation.
+
+You were trying to solve:
+
+```text
+Hold creation
++
+Payment
++
+Worker
++
+Expiry
++
+Distributed race
++
+Refund
++
+Failure recovery
+```
+
+all at once.
+
+That's why RushStock suddenly felt enormous.
+
+We don't need to solve all of that before implementing the Hold.
+
+---
