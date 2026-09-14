@@ -44,4 +44,43 @@ bookings {
     (user_id,sale_id) must be unique
 }
 
-// Have not created status delibrately to keep things simple
+type HOLD_STATUS = "ACTIVE" | "EXPIRED" | "CONVERTED"
+
+holds {
+    id: UUID; (primary-key,unique,not-null)
+    user_id: UUID; (foreign-key,not-null)
+    sale_id: UUID; (foreign-key,not-null)
+    quantity: SMALLINT; (+ve only,not-null)
+    status: HOLD_STATUS; (not-null, Default ACTIVE)
+    expires_at: TIMESTAMPTZ; (not-null, Default - now() + 5mins)
+    created_at: TIMESTAMPTZ; (not-null)
+    updated_at: TIMESTAMPTZ; (not-null)
+
+    (user_id,sale_id,status) must be unique ;if not possible handle app logic -> Helps handling idempoteny or retries via failures
+    index on (sale_id, user_id) this order only
+}
+
+endpoint - POST /holds {
+    saleId
+    quantity
+}
+
+user_id from auth token
+
+Zod validations for {
+    saleId
+    quantity
+}
+
+And foreign-key constraint checks if user_id,sale_id are valid ids or not
+
+POST service logic
+
+1. Start a transaction
+2. Decrement sale.quantity by req.quantity WHERE sale.quantity >= req.quantity AND sale is live AND sale.id = req.saleId
+3. Check if above update happend if not rollback else
+4. Add a row to holds with above values 
+5. Commit 
+6. Return a response asking to make payment 
+
+Assumption - Since adding (user_id,sale_id,status) must be unique constraint assuming the worker will work properly and timely manner so that users with failed payments or missed windows are able to retry
