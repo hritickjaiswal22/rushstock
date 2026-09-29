@@ -173,3 +173,62 @@ Why each:
 - What if the worker tries multiple times
 - Does worker have to handle the case where failure happend during pay flow
 - What other edge cases am I missing
+
+# Additional questions
+
+- Does worker have to take care of idempotency keys ???
+- Should I also store the idempotency key in orders table during order flow ???
+- Redis in above architecture is only required for to handle high speed not correectness , I mean because of split brain failure it is possible that redis stock goes up more than the original stock or since worker is the only entity in the system that re-stocks the chance to be more than original is none???
+
+# Review the answers I have
+
+- For idempotency data structure store json object
+- If idempotency key matches during order flow return the status and also check SQL status if expired return expired
+- If during order flow postgres transaction fails then YES delete idempoteny key state
+- For pay flow and worker cleanup there is no need to handle idempotency key whatsoever
+
+# Review of above system
+
+https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
+
+# Bugs in above
+
+- Critical Bug #1: The Worker Does Redis-First, SQL-Second
+
+  ```
+    Every 30s:
+    candidates = ZRANGEBYSCORE {sale_id}:zset:expiry -inf now LIMIT 0 100
+
+    For each member "order_id:user_id":
+      BEGIN SQL
+        SELECT status FROM orders WHERE id = order_id FOR UPDATE
+      COMMIT
+
+      case status:
+        'PENDING'   → UPDATE orders SET status='EXPIRED' WHERE id=order_id
+                      Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
+        'SUCCESS'   → Lua: if ZREM zset member == 1: HDEL pending user_id   -- cleanup only
+        'EXPIRED'   → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
+        'FAILED'    → same as EXPIRED
+        NULL        → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
+  ```
+
+- Critical Bug #2: Pay Flow Race with the Worker (Basically make sure it is safe)
+- Critical Bug #3: Idempotency Key Cleanup on Compensation
+- Sale start/end time gating in the order flow
+- Pending lookup by user_id is broken - Pending ste should be a hash return order_id
+- Payment failure path is missing (Already known)
+- Redis Cluster hash tags (Future problem)
+- User's /confirm needs AND user_id = ? (Solved by jwt)
+- Sale cancellation is undefined (Not needed)
+- What is the "cached data" actually?
+- For idempotency nonsese
+  ```
+    if idem_key exists: (during order flow)
+      cached = parse(json)
+      sql_status = SELECT status FROM orders WHERE id = cached.order_id
+      if sql_status == 'PENDING': return {order_id, "PENDING"}      # legit retry
+      if sql_status == 'EXPIRED': return 410 Gone, "Your previous attempt expired, retry with new key"
+      if sql_status == 'SUCCESS': return {order_id, "SUCCESS"}      # already paid
+      if sql_status == 'FAILED':  return 410 Gone, "Payment failed, retry with new key"
+  ```
