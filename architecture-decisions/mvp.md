@@ -14,188 +14,147 @@
 
 Note - Do not want to complicate above flow with failures, idempotency and system design scenarios so assumption is if sale verification fails the admin reaches dev to fix it.
 
-VAR EXPIRATION_PERIOD = 5 or 10 mins
-
-# Order flow
-
-- User clicks on 'Buy Now'
-- The frontend generates a idempotency key (UUID V4) and sends it with the request which reaches the api service
-- The api service then
-  - 🤔 What if the server dies here - No effect at all
-  - The server generates the order_id (UUID V4)
-  - 🤔 What if the server dies here - No effect at all since the order id was not saved
-  - Server runs the Lua script in Redis:
-    ```
-      Server checks the idempotency key if already present return cached data (Not sure what is exactly that cached data , what data structure is used and how will user know the state from cached data) but not allowd to move forward if match otherwise
-      SISMEMBER bought  -> if yes, -3
-      SISMEMBER pending -> if yes, -2
-      DECR stock
-      if < 0: INCR back, -1
-      ZADD zset:expiry  order_id:user_id, expiry_ts
-      SADD set:pending  user_id
-      SET idem:{idempotency_key} "PENDING" EX 86400
-      return remaining_stock
-    ```
-  - 🤔 What if the server dies here - The worker will be in charge of re-conciliation after will poll from zset to check what are later than EXPIRATION_PERIOD and re-concile them and their corresponding SQL row.
-  - Then insert the Postgres row (PENDING). If the Postgres insert fails on the partial unique index, call a compensating Lua script that undoes the Redis reservation:
-    ```
-       SREM set:pending  user_id
-       ZREM zset:expiry  order_id:user_id
-       INCR stock
-       Not sure about idempotency state in redis over here but according to me if above fails then should also remove the idemptoncy key as well
-    ```
-  - 🤔 What if the server dies here - No harm done just simple reliance on idempotency key for retries
-  - Return to user response success and to make payment along with orderId
-
-- User receives the success response and proceeds to pay flow
-
-# Pay flow (Happy Path or Success Path)
-
-- Simulated payment endpoint is hit by frontend the request must have idempotency key and order id
-- The api service then
-  - 🤔 What if the server dies here - No harm done ok
-  - Checks the idempotency key (Not sure how it checks but I think if not exist or not pending return error)
-  - 🤔 What if the server dies here - No harm done ok
-  - Start a SQL transaction
-    ```
-        Check orderId and update order status to "SUCCESS"
-        If unique index violates, throw appropriate error
-    ```
-  - 🤔 What if the server dies here - Not sure maybe the worker can re-concile
-  - Server runs the Lua script in Redis:
-    ```
-        SADD  set:bought   user_id
-        SREM  set:pending  user_id
-        ZREM  zset:expiry  order_id:user_id
-        I guess should also update the idempotency key's status not sure
-    ```
-  - 🤔 What if the server dies here - Simple idempotency handle
-  - Return success response
-
-# Worker flow
-
-- Runs every 30s (configured according to optimality not a hard decide number)
-- For each run
-  ```
-      Server runs the Lua script in Redis:
-        Polls redis zset for expired holds by making use of now() >= EXPIRATION_PERIOD
-        For each expired value, remove from set:pending , zset:expiry and stock count +1
-        And returns those orderIds
-      🤔 What if the worker dies in between or even how to handle worker failure cases will it lead to split brain
-      Take those orderIds and flip their statuses to EXPIRED using transactions
-  ```
-
 # Schema
 
 ```
 users {
-    id
-    name
-    email
-    password
-    type ENUM(user, admin)
+  id
+  name
+  email
+  password
+  role ENUM(ADMIN, USER)
 }
 
 products {
-    id
-    name
-    description
-    price
-    ...
+  id
+  title
+  description
+  price
 }
 
 sales {
-    id
-    authorId
-    productId
-    unitPrice (sale_price)
-    quantity (inventory)
-    endAt
-    startAt
+  id
+  authorId
+  productId
+  unitPrice
+  inventory
+  startAt
+  endAt
 
-    Unique constraint on (productId, startAt, endAt) with a gist to prevent overlapping sales for the same product
+  Unique constraint on (productId,startAt,endAt) with a gist for preventing other sale of same product within this interval
+  Constraint inventory >= 0
 }
 
 orders {
-    id
-    userId
-    saleId
-    quantity(for now consider only 1)
-    expires_at
-    status ENUM('PENDING', 'SUCCESS', 'EXPIRED')
+  id
+  saleId
+  userId
+  idempotencyId
+  quantity (Assumed 1 always for MVP)
+  status ENUM(PENDING, EXPIRED, SUCCESS, FAILED) (Will have to find a way so that status can never be changed for EXPIRED, SUCCESS, FAILED)
+  expiresAt
 
-    CREATE UNIQUE INDEX one_live_order_per_user_per_sale
-    ON orders (sale_id, user_id)
-    WHERE status IN ('PENDING', 'SUCCESS');
-
-    Now a user can have at most one row that is either PENDING or SUCCESS for a given sale. EXPIRED and FAILED rows are not counted, so once a pending order expires, they can retry.
-
-    This single index already covers "one successful purchase", because a SUCCESS row counts as live.
-
-    You still need a cleanup job that flips old PENDING rows to EXPIRED, otherwise the index will block a user forever.
-
-    And make sure the system is never able to flip SUCCESS, EXPIRED or FAILED statuses
+  Unique constraint on idempotencyId
+  And partial unique constraint on (saleId,userId) AND status = "SUCCESS" or "PENDING" and thus users can retry failed or expired orders with new idempotencyIds
 }
 ```
 
-Redis Design
+# Redis Design
 
-You need three structures per sale, not one:
-
-```
-    stock:{sale_id}          string   -> available stock counter,
-    zset:expiry:{sale_id}    zset     -> member = "order_id:user_id",
-    set:pending:{sale_id}    set      -> user_ids with an active reservation
-    set:bought:{sale_id}     set      -> user_ids who already succeeded
-```
-
-Also need to store idempotency keys but not sure what data structure to use
-
-Why each:
-
-- zset:expiry → lets a worker find expired reservations quickly (sorted by time).
-
-- set:pending → O(1) check "does this user already have a live reservation?"
-
-- set:bought → O(1) check "did this user already win this sale?"
+For each sale
 
 ```
-    SET stock:{sale_id} <inventory>
-    EXPIREAT stock:{sale_id} <sale_end + 24h>
-    EXPIREAT set:pending:{sale_id} <sale_end + 24h>
-    EXPIREAT set:bought:{sale_id}  <sale_end + 7d>
-    EXPIREAT zset:expiry:{sale_id} <sale_end + 24h>
+saleId:stock - Stores the available stock
+saleId:zset - A sorted set storing orderId,userId
+saleId:bought - A set of userIds for who have successfully bought
+saleId:pending - Some hash data structure which store userIds whose orders are in pending
+saleId:idempotency - A map which will store orderId and using that orderId will be answered by querying PostGres (source of truth) during order flow
 ```
 
-# Questions
+# Order flow
 
-- How to handle worker failure cases
-- What if the worker tries multiple times
-- Does worker have to handle the case where failure happend during pay flow
-- What other edge cases am I missing
+- Frontend generates a unique UUID V4
+- The request contains saleId, userId and above generated idempotencyId
+- The request hits the api servie which then
 
-# Additional questions
+````
+  - Check the idempotencyId
+    ```
+      if idem_key exists: (during order flow)
+      cached = parse(json)
+      sql_status = SELECT status FROM orders WHERE id = cached.order_id
+      if sql_status == 'PENDING': return {order_id, "PENDING"}      # legit retry
+      if sql_status == 'EXPIRED': return 410 Gone, "Your previous attempt expired, retry with new key"
+      if sql_status == 'SUCCESS': return {order_id, "SUCCESS"}      # already paid
+      if sql_status == 'FAILED':  return 410 Gone, "Payment failed, retry with new key"
+    ```
+    So if match return do not allow to continue further otherwise continue
+  - Generate an orderId
+  - Using a Lua script inside Redis execute below atomically
+    ```
+      check bought set if userId there return
+      check pending set if userId there return
+      check stock is present if not present return
+      populate zset
+      populate pending hash ds with (orderId,userId) with userId as key
+      populate idempotency map with orderId as value and idempotencyId as key
+      decrement stock
+    ```
+  - Start a transaction
+    ```
+      Check sale validity - from sales table where id=saleId AND now >= startAT AND now < endAt AND inventory >= 0 after if ok continue otherwise fail
+      Insert a new orders row with status "PENDING" and expiresAt
+    ```
+  - If above transaction fails for some reason using Lua and Redis basically revert above redis changes
+  - Return success response and asking user to pay
+````
 
-- Does worker have to take care of idempotency keys ???
-- Should I also store the idempotency key in orders table during order flow ???
-- Redis in above architecture is only required for to handle high speed not correectness , I mean because of split brain failure it is possible that redis stock goes up more than the original stock or since worker is the only entity in the system that re-stocks the chance to be more than original is none???
+# Pay flow (Happy Path)
 
-# Review the answers I have
+- Frontend sends the request with saleId, userId and orderId
+- The request hits the api servie which then
 
-- For idempotency data structure store json object
-- If idempotency key matches during order flow return the status and also check SQL status if expired return expired
-- If during order flow postgres transaction fails then YES delete idempoteny key state
-- For pay flow and worker cleanup there is no need to handle idempotency key whatsoever
+````
+  - Start a transaction
+    ```
+    Decrement inventory  from sales table where id=saleId AND now >= startAT AND now < endAt AND inventory >= 0 after inventory - quantity(1)
+    Update the orders row with id=orderId AND STATUS="PENDING" AND userId=above userId
+    ```
+  - If above fails return failed
+  - Using a Lua script inside Redis execute below atomically
+    ```
+      remove from zset
+      add in bought set
+      remove from pending set
+    ```
+  - Return success response
+````
 
-# Review of above system
+# Pay flow (Failed Path)
 
-https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
+- Frontend sends the request with saleId, userId and orderId
+- The request hits the api servie which then
 
-# Bugs in above
+````
+  - Start a transaction
+    ```
+    Update the orders row with id=orderId AND STATUS="PENDING" AND userId=above userId to "FAILED"
+    ```
+  - If above fails return failed
+  - Using a Lua script inside Redis execute below atomically
+    ```
+      restock
+      remove from zset
+      remove from pending set
+    ```
+  - Return success response
+````
 
-- Critical Bug #1: The Worker Does Redis-First, SQL-Second
+#### Note - For above flows the userId will come from JWT all the endpoints are auth middleware gated
 
-  ```
+# Worker flow
+
+```
     Every 30s:
     candidates = ZRANGEBYSCORE {sale_id}:zset:expiry -inf now LIMIT 0 100
 
@@ -211,24 +170,8 @@ https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
         'EXPIRED'   → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
         'FAILED'    → same as EXPIRED
         NULL        → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
-  ```
+```
 
-- Critical Bug #2: Pay Flow Race with the Worker (Basically make sure it is safe)
-- Critical Bug #3: Idempotency Key Cleanup on Compensation
-- Sale start/end time gating in the order flow
-- Pending lookup by user_id is broken - Pending ste should be a hash return order_id
-- Payment failure path is missing (Already known)
-- Redis Cluster hash tags (Future problem)
-- User's /confirm needs AND user_id = ? (Solved by jwt)
-- Sale cancellation is undefined (Not needed)
-- What is the "cached data" actually?
-- For idempotency nonsese
-  ```
-    if idem_key exists: (during order flow)
-      cached = parse(json)
-      sql_status = SELECT status FROM orders WHERE id = cached.order_id
-      if sql_status == 'PENDING': return {order_id, "PENDING"}      # legit retry
-      if sql_status == 'EXPIRED': return 410 Gone, "Your previous attempt expired, retry with new key"
-      if sql_status == 'SUCCESS': return {order_id, "SUCCESS"}      # already paid
-      if sql_status == 'FAILED':  return 410 Gone, "Payment failed, retry with new key"
-  ```
+# Review
+
+https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
