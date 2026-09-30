@@ -1,0 +1,2 @@
+- After any SQL update make sure to check the number of rows updated
+- For redis while working with sorted sets make sure to check ZREM === 1

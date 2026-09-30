@@ -109,6 +109,10 @@ saleId:idempotency - A map which will store orderId and using that orderId will 
   - Return success response and asking user to pay
 ````
 
+## Fixes required
+
+- The idempotency key check must be inside the Lua script
+
 # Pay flow (Happy Path)
 
 - Frontend sends the request with saleId, userId and orderId
@@ -117,8 +121,16 @@ saleId:idempotency - A map which will store orderId and using that orderId will 
 ````
   - Start a transaction
     ```
-    Decrement inventory  from sales table where id=saleId AND now >= startAT AND now < endAt AND inventory >= 0 after inventory - quantity(1)
-    Update the orders row with id=orderId AND STATUS="PENDING" AND userId=above userId
+      BEGIN;
+      SELECT status, expires_at FROM orders
+        WHERE id = ? AND user_id = ? FOR UPDATE;
+      -- if status != 'PENDING' → ROLLBACK, return 409
+      -- if expires_at < NOW() → ROLLBACK, return 410
+
+      UPDATE orders SET status='SUCCESS' WHERE id=?;  -- 1 row
+      UPDATE sales SET inventory = inventory - 1
+        WHERE id = ? AND inventory >= 1;              -- check rowcount!
+      COMMIT;
     ```
   - If above fails return failed
   - Using a Lua script inside Redis execute below atomically
@@ -138,14 +150,18 @@ saleId:idempotency - A map which will store orderId and using that orderId will 
 ````
   - Start a transaction
     ```
-    Update the orders row with id=orderId AND STATUS="PENDING" AND userId=above userId to "FAILED"
+    Executes: UPDATE orders SET status="FAILED" WHERE id=orderId AND status="PENDING" AND userId=userId
     ```
   - If above fails return failed
+  - Let row_count = the number of rows updated by Postgres.
+  - If row_count == 0:
+    `Return success early (someone else already handled this!)`
+  - If row_count == 1:
   - Using a Lua script inside Redis execute below atomically
     ```
-      restock
-      remove from zset
-      remove from pending set
+      if ZREM zset member == 1:
+        INCR stock
+        HDEL pending user_id
     ```
   - Return success response
 ````
@@ -155,23 +171,53 @@ saleId:idempotency - A map which will store orderId and using that orderId will 
 # Worker flow
 
 ```
-    Every 30s:
-    candidates = ZRANGEBYSCORE {sale_id}:zset:expiry -inf now LIMIT 0 100
+Every 30s:
+candidates = ZRANGEBYSCORE {sale_id}:zset:expiry -inf now LIMIT 0 100
 
-    For each member "order_id:user_id":
-      BEGIN SQL
-        SELECT status FROM orders WHERE id = order_id FOR UPDATE
-      COMMIT
+For each member "order_id:user_id":
 
-      case status:
-        'PENDING'   → UPDATE orders SET status='EXPIRED' WHERE id=order_id
-                      Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
-        'SUCCESS'   → Lua: if ZREM zset member == 1: HDEL pending user_id   -- cleanup only
-        'EXPIRED'   → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
-        'FAILED'    → same as EXPIRED
-        NULL        → Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
+  // 1. THE SMART UPDATE
+  row_count = EXECUTE(
+    UPDATE orders SET status='EXPIRED' WHERE id = order_id AND status = 'PENDING'
+  )
+
+  if row_count == 1:
+    // Postgres says: "I successfully changed it from PENDING to EXPIRED."
+    // Redis Action: Safely remove from ZSET, return stock, delete pending.
+    Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
+
+  else:
+    // Postgres says: "I did nothing. The status was NOT PENDING."
+    // 2. THE LOCKLESS SELECT (Safe, because the state is now terminal)
+    current_status = EXECUTE(SELECT status FROM orders WHERE id = order_id)
+
+    // 3. THE REDIS CLEANUP
+    if current_status == 'SUCCESS':
+      // The user successfully paid! Do NOT increment stock.
+      // We still use ZREM == 1 to make sure we only clean this up once.
+      Lua: if ZREM zset member == 1: HDEL pending user_id and redis.call('SADD', bought_key, user_id)
+
+    else if current_status == 'FAILED' or current_status == 'EXPIRED' or current_status == NULL:
+      // The payment failed, or was expired by something else.
+      // We need to return the stock.
+      Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
 ```
 
 # Review
 
 https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
+
+### Gaps
+
+- Bug 1 — Schema: The "unique constraint" is not an overlap constraint (This is already solved)
+- Bug 2 — Order flow: Idempotency check-then-set is racy (Fix - The idempotency key check must be inside the Lua script)
+- Bug 3 — Worker: Lock is released before the update (Already fixed above)
+- Bug 4 — Pay-failure path: Redis Lua is unconditional (Already fixed above)
+- Bug 5 — Pay-flow SQL: Missing FOR UPDATE, missing rowcount checks, wrong predicate (Already fixed above)
+- Bug 6 — Phantom idempotency keys (Will ask fronend to retry with new idempotency key and let worker be the only enetity to re-stock)
+- Bug 7 — Worker does not SADD bought on SUCCESS cleanup (Fixed above)
+- Gap A - No Redis-lost-data recovery (Ignoring since MVP)
+- Gap B — Idempotency map per sale grows unbounded (Will add proper TTL for all redis keys or set)
+- Gap C — Redis key naming inconsistency (Will set it up like that)
+- Gap D — No cleanup of bought / pending after sale ends (As said TTL will take care of it)
+- Gap E — Compensating Lua must delete the idempotency key (I meant the idempotency as well)
