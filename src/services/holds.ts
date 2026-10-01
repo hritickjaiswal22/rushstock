@@ -7,10 +7,39 @@ import {
   ConflictError,
 } from "../utils/ApiError";
 import { redis } from "../lib/redis";
-import { getStockKey } from "../utils/redisKeys";
+import {
+  getStockKey,
+  getSortedSetkey,
+  encodeZSetMember,
+  decodeZSetMember,
+} from "../utils/redis";
+import { MAX_HOLD_INTERVAL_SECONDS } from "../utils/constants";
 
 export async function createHold(body: PostHoldBody, userId: string) {
-  const res = await redis.decrby(getStockKey(body.saleId), body.quantity);
+  const { idempotencyId, quantity, saleId } = body;
+  const expiresAt = Date.now() + MAX_HOLD_INTERVAL_SECONDS * 1000;
 
-  return await redis.get(getStockKey(body.saleId));
+  await redis.zadd(getSortedSetkey(saleId), {
+    score: Date.now() + 1 * 60 * 1000,
+    member: encodeZSetMember("1", userId),
+  });
+
+  await redis.zadd(getSortedSetkey(saleId), {
+    score: Date.now() + 2 * 60 * 1000,
+    member: encodeZSetMember("2", userId),
+  });
+
+  await redis.zadd(getSortedSetkey(saleId), {
+    score: Date.now() + 3 * 60 * 1000,
+    member: encodeZSetMember("3", userId),
+  });
+
+  const res = await redis.zrange(
+    getSortedSetkey(saleId),
+    "-inf",
+    Date.now() + 130_000,
+    { byScore: true },
+  );
+
+  return res.map((val) => decodeZSetMember(val as string));
 }
