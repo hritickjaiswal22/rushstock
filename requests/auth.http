@@ -5,9 +5,9 @@ POST {{baseUrl}}/signup
 Content-Type: application/json
 
 {
-  "name":"abc",
-  "email":"abc@gmail.com",
-  "password":"abc@gmail.com"
+  "name":"flowTestUser",
+  "email":"flowTestUser@gmail.com",
+  "password":"flowTestUser@gmail.com"
 }
 
 ### Signin

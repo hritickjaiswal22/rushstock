@@ -1,0 +1,1 @@
+export const MAX_HOLD_INTERVAL_SECONDS = 300;

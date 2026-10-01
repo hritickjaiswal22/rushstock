@@ -3,9 +3,10 @@
 ### Create sales
 POST {{baseUrl}}/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwMTI4MjIwOC05NjkwLTQzNmMtOTc3MC1hZjM1NDkzNmRmODgiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc4OTM4OTI0NSwiZXhwIjoxNzg5OTk0MDQ1fQ.dhBxikxZ_hCJGiYk49ifRsrQHPcf8VS57Bb9jxdUPwo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NWI3NGI3Ni1lZjIxLTRkYTQtYmUxOC00Yzg5MzI1YTUzMDEiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc5MDgxNjU2OSwiZXhwIjoxNzkxNDIxMzY5fQ.1rrLqGEImcEuIUs7frpJF7rQPqz2aaBkAjLHmu30FNQ
 
 {
     "saleId": "a0399729-bddb-4f3f-b051-985ce6b7c6a9",
-    "quantity": 3
+    "quantity": 3,
+    "idempotencyId":"b515b3e6-e0f3-4b06-8e13-be7335b63859"
 }
