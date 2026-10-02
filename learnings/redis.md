@@ -56,3 +56,42 @@ Then your Lua scripts (which touch multiple of these keys) would work in a clust
 | Should you change your key names now?              | **No**—keep them as `saleId:stock`, etc.                                |
 
 The suggestion you received was technically correct for _cluster_ users, but it's noise for your MVP. Stick with your single-node design, keep your keys as they are, and focus on the Lua scripts that actually matter for your flash sale logic.
+
+# Note - Redis operation do not fail like SQL so check each operation
+
+# Redis Sorted Sets
+
+- `zadd` adds it to the sorted set
+- For worker flow sorted set `zrange(..., "-inf", Date.now(), { byScore: true })` will return all the expired holds because just think about it in sorted set the score is expiry time hence all expired holds
+
+### Rule of Thumb for the Upstash SDK
+
+Different commands accept different argument shapes. The pattern is:
+
+| Command                                            | Argument shape         | Example         |
+| -------------------------------------------------- | ---------------------- | --------------- |
+| `zadd`                                             | `{ score, member }`    | Needs both      |
+| `zrem`                                             | `member` or `member[]` | Only member     |
+| `zscore`                                           | `member`               | Only member     |
+| `zrange`                                           | `(start, stop, opts)`  | Range + options |
+| `zrangebyscore` (or `zrange` with `byScore: true`) | `(min, max, opts)`     | Range + options |
+
+When in doubt, check the SDK method signature—the IDE should tell you what it expects.
+
+So drop the score, pass just the encoded member, and it'll work.
+
+### The Pattern to Remember
+
+The Upstash SDK is inconsistent by design—each method has its own signature. Here's the mental model:
+
+| Method                         | Second arg                   | Third arg |
+| ------------------------------ | ---------------------------- | --------- |
+| `zadd(key, { score, member })` | **object** with score+member | —         |
+| `zrem(key, member)`            | **string**                   | —         |
+| `zrem(key, [m1, m2, m3])`      | **array** of strings         | —         |
+| `zscore(key, member)`          | **string**                   | —         |
+| `zrange(key, min, max, opts)`  | min                          | max, opts |
+| `hset(key, { field: value })`  | **object**                   | —         |
+| `hdel(key, field)`             | **string** or **string[]**   | —         |
+
+**Rule:** if the command needs a score (only `zadd` and `zincrby`), it takes an object. Otherwise, it takes raw strings or arrays.

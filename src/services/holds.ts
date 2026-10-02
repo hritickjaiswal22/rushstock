@@ -34,6 +34,14 @@ export async function createHold(body: PostHoldBody, userId: string) {
     member: encodeZSetMember("3", userId),
   });
 
+  const res1 = await redis.zrange(getSortedSetkey(saleId), "-inf", "+inf", {
+    byScore: true,
+  });
+
+  console.log(
+    `The entire list is ${res1.map((val) => decodeZSetMember(val as string))}`,
+  );
+
   const res = await redis.zrange(
     getSortedSetkey(saleId),
     "-inf",
@@ -41,5 +49,21 @@ export async function createHold(body: PostHoldBody, userId: string) {
     { byScore: true },
   );
 
-  return res.map((val) => decodeZSetMember(val as string));
+  console.log(
+    `The ranged list is ${res.map((val) => decodeZSetMember(val as string))}`,
+  );
+
+  const removedCount = await redis.zrem(
+    getSortedSetkey(saleId),
+    encodeZSetMember("2", userId),
+  );
+
+  if (removedCount === 1) {
+    const res1 = await redis.zrange(getSortedSetkey(saleId), "-inf", "+inf", {
+      byScore: true,
+    });
+
+    return res1.map((val) => decodeZSetMember(val as string));
+  }
+  return undefined;
 }
