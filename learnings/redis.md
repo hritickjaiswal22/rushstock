@@ -2,6 +2,24 @@
 
 https://redis.io/docs/latest/commands/
 
+https://chat.deepseek.com/a/chat/s/f9a0e60e-5b69-460b-9189-626463997d30
+
+# Note
+
+- While decidng data structure for a redis entity focus on where it will be used and what access pattern is there
+
+# The data structure mapping for various entities
+
+## The Five Structures Mapped
+
+| Your design          | Redis type           | Field/member     | Value/score      |
+| -------------------- | -------------------- | ---------------- | ---------------- |
+| `saleId:stock`       | **String** (counter) | —                | the number       |
+| `saleId:zset`        | **Sorted Set**       | `orderId:userId` | `expiresAt` (ms) |
+| `saleId:bought`      | **Set**              | `userId`         | —                |
+| `saleId:pending`     | **Hash**             | `userId`         | `orderId`        |
+| `saleId:idempotency` | **Hash**             | `idempotencyId`  | `orderId`        |
+
 # 🧩 What Are Redis Hash Tags?
 
 Hash tags are a special syntax for **Redis Cluster**, which is Redis's built-in sharding system. When you run Redis Cluster, your data is spread across multiple nodes (shards), and each key is assigned to a "hash slot" based on a hash of its name.
@@ -95,3 +113,26 @@ The Upstash SDK is inconsistent by design—each method has its own signature. H
 | `hdel(key, field)`             | **string** or **string[]**   | —         |
 
 **Rule:** if the command needs a score (only `zadd` and `zincrby`), it takes an object. Otherwise, it takes raw strings or arrays.
+
+# Lua Scripting
+
+### The Mental Model
+
+A Lua script is one command to Redis. While it runs, no other client's command can interleave. That's it. That's why it exists.
+
+```
+Naive (broken):        Atomic (correct):
+GET stock              EVAL "script that does all of it"
+check > 0
+DECR stock
+─── race window ───
+```
+
+Your design's whole correctness story is: put every check-and-mutate inside one Lua script. Nothing else.
+
+| Command         | Data type  | Purpose                                  |
+| --------------- | ---------- | ---------------------------------------- |
+| `HSET` / `HGET` | Hash       | Store / retrieve field-value pairs       |
+| `SISMEMBER`     | Set        | Check if a member exists                 |
+| `HEXISTS`       | Hash       | Check if a field exists                  |
+| `ZADD`          | Sorted Set | Add/update a member with a numeric score |

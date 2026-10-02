@@ -1,4 +1,6 @@
-// function with endcode and decode for values only
+// Note : function with endcode and decode for values only
+
+// Stock string
 
 export type StockMember = string;
 
@@ -32,4 +34,22 @@ export function decodeZSetMember(member: string): {
     orderId: member.slice(0, idx),
     userId: member.slice(idx + 1),
   };
+}
+
+// Idempotency Hash
+
+export function getIdempotencyKey(saleId: string) {
+  return `${saleId}:indempotency`;
+}
+
+// Bought set
+
+export function getBoughtKey(saleId: string) {
+  return `${saleId}:bought`;
+}
+
+// Pending Hash
+
+export function getPendingKey(saleId: string) {
+  return `${saleId}:pending`;
 }
