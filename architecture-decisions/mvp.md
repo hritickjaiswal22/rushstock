@@ -221,3 +221,7 @@ https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
 - Gap C — Redis key naming inconsistency (Will set it up like that)
 - Gap D — No cleanup of bought / pending after sale ends (As said TTL will take care of it)
 - Gap E — Compensating Lua must delete the idempotency key (I meant the idempotency as well)
+
+# Review of above
+
+https://chat.deepseek.com/a/chat/s/9b1a1d6f-d7fc-4a46-8ef5-94cabc2510ed

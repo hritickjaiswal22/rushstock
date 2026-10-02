@@ -6,101 +6,65 @@ import {
   BadRequestError,
   ConflictError,
 } from "../utils/ApiError";
+import { redis } from "../lib/redis";
+import {
+  getStockKey,
+  getSortedSetkey,
+  getBoughtKey,
+  getIdempotencyKey,
+  getPendingKey,
+  encodeZSetMember,
+  decodeZSetMember,
+} from "../utils/redis";
+import { MAX_HOLD_INTERVAL_SECONDS } from "../utils/constants";
 
-export async function postHold(body: PostHoldBody, userId: string) {
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const now = new Date();
+export const ORDER_SCRIPT = `
+-- KEYS[1]=idempotency KEYS[2]=bought KEYS[3]=pending KEYS[4]=stock KEYS[5]=zset
+-- ARGV[1]=idempotencyId ARGV[2]=userId ARGV[3]=orderId
+-- ARGV[4]=zsetMember ARGV[5]=expiresAtMs
 
-      const sale = await tx.sale.update({
-        data: {
-          stockQuantity: { decrement: body.quantity },
-        },
-        where: {
-          id: body.saleId,
-          stockQuantity: {
-            gte: body.quantity,
-          },
-          startAt: {
-            lte: now, // equivalent to startAt <= NOW()
-          },
-          endAt: {
-            gt: now, // equivalent to endAt > NOW()
-          },
-        },
-        select: {
-          authorId: true,
-          endAt: true,
-          id: true,
-          productId: true,
-          startAt: true,
-          stockQuantity: true,
-          unitPrice: true,
-        },
-      });
+local existing = redis.call('HGET', KEYS[1], ARGV[1]) 
+if existing then return { 'IDEMPOTENT', existing } end
 
-      const newHold = await tx.hold.create({
-        data: {
-          quantity: body.quantity,
-          saleId: sale.id,
-          userId,
-        },
-        select: {
-          id: true,
-          quantity: true,
-          saleId: true,
-          userId: true,
-          status: true,
-          expiresAt: true,
-        },
-      });
+if redis.call('SISMEMBER', KEYS[2], ARGV[2]) == 1 then
+  return { 'ALREADY_BOUGHT' }
+end
 
-      return {
-        hold: newHold,
-        expiresAt: newHold.expiresAt,
-      };
-    });
+if redis.call('HEXISTS', KEYS[3], ARGV[2]) == 1 then
+  return { 'ALREADY_PENDING' }
+end
 
-    return result;
-  } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
-      const sale = await prisma.sale.findUnique({
-        where: {
-          id: body.saleId,
-        },
-      });
-      const now = new Date();
+local stock = redis.call('GET', KEYS[4])
+if not stock or tonumber(stock) <= 0 then
+  return { 'NO_STOCK' }
+end
 
-      if (!sale)
-        throw new NotFoundError(
-          "Sale not found - Invalid Sale Id provided",
-          "SALE_NOT_FOUND",
-        );
+redis.call('DECR', KEYS[4])
+redis.call('ZADD', KEYS[5], ARGV[5], ARGV[4])
+redis.call('HSET', KEYS[3], ARGV[2], ARGV[3])
+redis.call('HSET', KEYS[1], ARGV[1], ARGV[3])
 
-      if (sale.stockQuantity < body.quantity)
-        throw new BadRequestError(
-          "The requested item is currently out of stock.",
-          "OUT_OF_STOCK",
-        );
+return { 'OK', ARGV[3] }
+`;
 
-      if (now < sale.startAt || now > sale.endAt) {
-        throw new BadRequestError("The sale is not live", "SALE_NOT_LIVE");
-      }
-    }
+export async function createHold(body: PostHoldBody, userId: string) {
+  const { idempotencyId, quantity, saleId } = body;
+  const expiresAt = Date.now() + MAX_HOLD_INTERVAL_SECONDS * 1000;
+  const orderId = "1";
 
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      throw new ConflictError(
-        "The requested item is currently in active hold state. Please complete payment",
-        "ACTIVE_HOLD",
-      );
-    }
+  const res = await redis.eval(
+    ORDER_SCRIPT,
+    // KEYS
+    [
+      getIdempotencyKey(saleId),
+      getBoughtKey(saleId),
+      getPendingKey(saleId),
+      getStockKey(saleId),
+      getSortedSetkey(saleId),
+    ],
+    // ARGS
+    [idempotencyId, userId, orderId, `${orderId}:${userId}`, expiresAt],
+  );
 
-    throw error;
-  }
+  return res;
 }
