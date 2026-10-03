@@ -17,10 +17,11 @@ enum Role {
   ADMIN
 }
 
-enum HoldStatus {
-  ACTIVE
+enum OrderStatus {
+  PENDING
   EXPIRED
-  CONVERTED
+  SUCCESS
+  FAILED
 }
 
 model User {
@@ -32,9 +33,8 @@ model User {
   createdAt DateTime @map("created_at") @default(now()) @db.Timestamptz
   updatedAt DateTime @map("updated_at") @updatedAt @db.Timestamptz
 
-  bookings Booking[]
-  sales    Sale[]    @relation("SaleAuthor")
-  holds    Hold[]
+  sales  Sale[]    @relation("SaleAuthor")
+  orders Order[]
 
   @@map("users")
 }
@@ -63,10 +63,9 @@ model Sale {
   createdAt     DateTime @map("created_at") @default(now()) @db.Timestamptz
   updatedAt     DateTime @map("updated_at") @updatedAt @db.Timestamptz
 
-  author    User     @relation("SaleAuthor", fields: [authorId], references: [id])
-  product   Product  @relation(fields: [productId], references: [id])
-  bookings  Booking[]
-  holds     Hold[]
+  author  User    @relation("SaleAuthor", fields: [authorId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  orders  Order[]
 
   @@unique([productId, startAt, endAt])
   @@index([startAt, endAt])
@@ -74,34 +73,20 @@ model Sale {
   @@map("sales")
 }
 
-model Booking {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  saleId    String   @map("sale_id") @db.Uuid
-  quantity  Int      @db.SmallInt
-  createdAt DateTime @map("created_at") @default(now()) @db.Timestamptz
-  updatedAt DateTime @map("updated_at") @updatedAt @db.Timestamptz
+model Order {
+  id            String      @id @default(uuid()) @db.Uuid
+  saleId        String      @map("sale_id") @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  idempotencyId String      @unique @map("idempotency_id") @db.Text
+  quantity      Int         @db.SmallInt
+  status        OrderStatus @default(PENDING)
+  expiresAt     DateTime    @map("expires_at") @db.Timestamptz
+  createdAt     DateTime    @map("created_at") @default(now()) @db.Timestamptz
+  updatedAt     DateTime    @map("updated_at") @updatedAt @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id])
   sale Sale @relation(fields: [saleId], references: [id])
-
-  @@unique([userId, saleId])
-  @@map("bookings")
-}
-
-model Hold {
-  id        String     @id @default(uuid()) @db.Uuid
-  userId    String     @map("user_id") @db.Uuid
-  saleId    String     @map("sale_id") @db.Uuid
-  quantity  Int        @db.SmallInt
-  status    HoldStatus @default(ACTIVE)
-  expiresAt DateTime   @map("expires_at") @default(dbgenerated("now() + interval '5 minutes'")) @db.Timestamptz
-  createdAt DateTime   @map("created_at") @default(now()) @db.Timestamptz
-  updatedAt DateTime   @map("updated_at") @updatedAt @db.Timestamptz
-
   user User @relation(fields: [userId], references: [id])
-  sale Sale @relation(fields: [saleId], references: [id])
 
   @@index([saleId, userId])
-  @@map("holds")
+  @@map("orders")
 }
