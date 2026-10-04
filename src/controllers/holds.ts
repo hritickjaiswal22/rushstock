@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
-import { createHold } from "../services/holds";
+import { postHold } from "../services/holds";
 import { MAX_HOLD_INTERVAL_SECONDS } from "../utils/constants";
 
 export const postHoldController = asyncHandler(
@@ -10,11 +10,11 @@ export const postHoldController = asyncHandler(
     const user = req.user;
     const body = req.body;
 
-    const hold = await createHold(body, user?.userId as string);
+    const newOrder = await postHold(body, user?.userId as string);
 
     return ApiResponse.created(
       res,
-      hold,
+      newOrder,
       `Hold created successfully - Make the payment within next ${MAX_HOLD_INTERVAL_SECONDS} seconds`,
     );
   },

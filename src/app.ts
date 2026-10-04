@@ -11,8 +11,8 @@ app.use(express.json());
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/sales", salesRouter);
-app.use("/api/v1/bookings", bookingsRouter);
-app.use("/api/v1/holds", holdsRouter);
+// app.use("/api/v1/bookings", bookingsRouter);
+app.use("/api/v1/reserve", holdsRouter);
 
 app.use(errorHandler);
 

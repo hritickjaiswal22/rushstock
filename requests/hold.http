@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:5000/api/v1/holds
+@baseUrl = http://localhost:5000/api/v1/reserve
 
 ### Create sales
 POST {{baseUrl}}/
@@ -7,6 +7,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NWI3N
 
 {
     "saleId": "a0399729-bddb-4f3f-b051-985ce6b7c6a9",
-    "quantity": 3,
+    "quantity": 1,
     "idempotencyId":"b515b3e6-e0f3-4b06-8e13-be7335b63859"
 }

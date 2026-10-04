@@ -39,7 +39,7 @@ export function decodeZSetMember(member: string): {
 // Idempotency Hash
 
 export function getIdempotencyKey(saleId: string) {
-  return `${saleId}:indempotency`;
+  return `indempotency`;
 }
 
 // Bought set
