@@ -2,4 +2,10 @@ System can have multiple sales live/upcoming simultaneously
 For a product only 1 live/upcoming can exist
 One successful booking per user per sale.
 One hold per user per sale.
-For SQL row locks saleId will be used throughout the system
+For SQL row locks
+    -When you are coordinating something that belongs to a sale, use the Sale row as the lock.
+    -When you are only changing one order’s status, use that Order row as the lock.
+    -If a flow must lock both, always lock Sale first, then Order.
+
+    Use Sale when you need sale-level coordination. Use Order when you only need order-level coordination. If you need both, take Sale first, then Order.
+

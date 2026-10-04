@@ -1,0 +1,13 @@
+@baseUrl = http://localhost:5000/api/v1/reservations
+
+### Create sales
+POST {{baseUrl}}/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NWI3NGI3Ni1lZjIxLTRkYTQtYmUxOC00Yzg5MzI1YTUzMDEiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc5MDgxNjU2OSwiZXhwIjoxNzkxNDIxMzY5fQ.1rrLqGEImcEuIUs7frpJF7rQPqz2aaBkAjLHmu30FNQ
+
+{
+    "saleId": "a0399729-bddb-4f3f-b051-985ce6b7c6a9",
+    "idempotencyId":"b515b3e6-e0f3-4b06-8e13-be7335b63859",
+    "orderId":"01a1078e-7e6c-7848-a256-d67621d64452",
+    "paymentState":"SUCCESS"
+}
