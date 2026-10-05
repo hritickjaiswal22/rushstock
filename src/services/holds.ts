@@ -105,6 +105,7 @@ The logic is very simple
 
 - No Automatic Cleanup & Self-Healing for the case idempotent hit but no order row found (Split brain); Reason then worker would be the only identity responsible for stock increment 
 - Returning `order` for success idempotent check which then will get converted to message successful hold created by controller
+- Proper message and response for frontend is not handled at all
 */
 
 async function getIdempotencyState(orderId: string) {
