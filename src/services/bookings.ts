@@ -128,9 +128,7 @@ async function successfulReservation(
 
   const res = (await redis.eval(
     RESERVE_SCRIPT,
-    // KEYS
     [getSortedSetkey(saleId), getBoughtKey(saleId), getPendingKey(saleId)],
-    // ARGS
     [`${orderId}:${userId}`, userId],
   )) as ReserveScriptResult;
 
@@ -179,9 +177,7 @@ async function failReservation(
 
   await redis.eval(
     FAIL_SCRIPT,
-    // KEYS
     [getSortedSetkey(saleId), getStockKey(saleId), getPendingKey(saleId)],
-    // ARGS
     [`${orderId}:${userId}`, userId],
   );
 

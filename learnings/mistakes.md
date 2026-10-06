@@ -2,3 +2,4 @@
 - For redis while working with sorted sets make sure to check ZREM === 1
 - While working with redis keep track what of what are global entities and what are tied entities e.g. the idempotency should be global not tied saleId:idempotency since that is how it is handled in SQL
 - Before any implementation not writing the - invariants, reasoning , known failure points and edge cases considered
+- Note - Where the bullMQ task is pushed and the task being idempotent is EXTREMELY IMPORTANT

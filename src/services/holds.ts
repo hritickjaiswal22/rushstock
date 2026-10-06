@@ -14,6 +14,7 @@ import {
   decodeZSetMember,
 } from "../utils/redis";
 import { MAX_HOLD_INTERVAL_SECONDS } from "../utils/constants";
+import { scheduleExpiry } from "../queues/expiry";
 
 export type OrderScriptResult =
   | ["OK", string]
@@ -195,14 +196,12 @@ async function revertRedisHold({
 
   return await redis.eval(
     REVERT_ORDER_SCRIPT,
-    // KEYS - matches key positions expected by REVERT_ORDER_SCRIPT
     [
       getIdempotencyKey(saleId), // KEYS[1]
       getPendingKey(saleId), // KEYS[2]
       getStockKey(saleId), // KEYS[3]
       getSortedSetkey(saleId), // KEYS[4]
     ],
-    // ARGS
     [
       idempotencyId, // ARGV[1]
       userId, // ARGV[2]
@@ -216,9 +215,18 @@ export async function postHold(body: PostHoldBody, userId: string) {
   const expiresAt = Date.now() + MAX_HOLD_INTERVAL_SECONDS * 1000;
   const orderId = uuidv7();
 
+  try {
+    await scheduleExpiry(
+      orderId,
+      { saleId, userId, orderId },
+      MAX_HOLD_INTERVAL_SECONDS * 1000,
+    ); // 5 minutes
+  } catch (error) {
+    throw new Error("Failed to schedule order expiry. Please try again.");
+  }
+
   const res = (await redis.eval(
     ORDER_SCRIPT,
-    // KEYS
     [
       getIdempotencyKey(saleId),
       getBoughtKey(saleId),
@@ -226,7 +234,6 @@ export async function postHold(body: PostHoldBody, userId: string) {
       getStockKey(saleId),
       getSortedSetkey(saleId),
     ],
-    // ARGS
     [idempotencyId, userId, orderId, `${orderId}:${userId}`, expiresAt],
   )) as OrderScriptResult;
 

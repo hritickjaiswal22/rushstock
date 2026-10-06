@@ -203,6 +203,30 @@ For each member "order_id:user_id":
       Lua: if ZREM zset member == 1: INCR stock; HDEL pending user_id
 ```
 
+# Worker's working with above logic
+
+## Confirmed ordering
+
+```text
+1. Generate orderId (UUIDv4, fresh per request)
+2. await scheduleExpiry(orderId, {...}, 5min)   ← if this throws, abort
+3. Run Redis Lua (atomic reserve)
+4. INSERT Postgres PENDING order
+5. Respond
+```
+
+That matches the enqueue-before-Lua pattern. Crash table:
+
+| Crash after step | State                        | Recovery                                                                       |
+| ---------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| 1                | nothing                      | client retries                                                                 |
+| 2                | job exists, no reservation   | worker fires at TTL → UPDATE 0, read null → else → ZREM==0 → no-op             |
+| 3                | job + reservation, no DB row | worker fires → UPDATE 0, read null → else → ZREM==1 → INCR stock, HDEL pending |
+| 4                | normal                       | worker fires → normal expiry                                                   |
+| 5                | normal                       | same as 4                                                                      |
+
+All covered. ✅
+
 # Review
 
 https://chat.deepseek.com/a/chat/s/61f9720d-1ff9-4fba-8ec3-f1d433fe0eef
