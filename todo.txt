@@ -1,3 +1,4 @@
 1. Create an index on orders table for userId for cursor pagination of orders
 2. In auth middleware to check validate user was thinking about creating a pool of valid user is redis
 3. Inspect the row lock used in order flow for sales row
+4. For idempotent hits empty jobs will be pushed to bullmq queue

@@ -1,5 +1,10 @@
 // src/config/redis.ts
 import IORedis from "ioredis";
+import "dotenv/config";
+
+if (!process.env.UPSTASH_REDIS_URL) {
+  throw new Error("REDIS_URL is missing from environment variables");
+}
 
 // Use the TLS-enabled connection string from Upstash.
 // It should look like: rediss://default:YOUR_PASSWORD@your-endpoint.upstash.io:6379
