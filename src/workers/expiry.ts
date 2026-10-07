@@ -3,7 +3,7 @@ import { Worker } from "bullmq";
 import connection from "../lib/redisIO";
 import { EXPIRY_QUEUE_NAME } from "../queues/expiry";
 import { prisma } from "../lib/prisma";
-import { redis } from "../lib/redis";
+import { evalScript } from "../lib/redis";
 import {
   getSortedSetkey,
   getStockKey,
@@ -33,7 +33,7 @@ const expiryWorker = new Worker(
       // Postgres says we successfully expired a PENDING order.
       // Now, atomically remove from ZSET and return stock.
       console.log(`Order ${orderId} expired. Releasing stock.`);
-      await redis.eval(
+      await evalScript(
         RELEASE_SCRIPT,
         [getSortedSetkey(saleId), getStockKey(saleId), getPendingKey(saleId)],
         [`${orderId}:${userId}`, userId],
@@ -45,7 +45,7 @@ const expiryWorker = new Worker(
       if (order?.status === "SUCCESS") {
         // The user paid. Clean up the ZSET, but DO NOT return stock.
         console.log(`Order ${orderId} was paid. Cleaning up Redis.`);
-        await redis.eval(
+        await evalScript(
           PAID_CLEANUP_SCRIPT,
           [
             getSortedSetkey(saleId),
@@ -57,7 +57,7 @@ const expiryWorker = new Worker(
       } else {
         // The order was already expired or failed or null. Just clean up Redis.
         console.log(`Order ${orderId} already handled. Cleaning up.`);
-        await redis.eval(
+        await evalScript(
           RELEASE_SCRIPT,
           [getSortedSetkey(saleId), getStockKey(saleId), getPendingKey(saleId)],
           [`${orderId}:${userId}`, userId],

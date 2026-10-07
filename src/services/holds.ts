@@ -3,7 +3,7 @@ import { uuidv7 } from "uuidv7";
 import { PostHoldBody } from "../validators/holds";
 import { prisma } from "../lib/prisma";
 import { BadRequestError, ConflictError } from "../utils/ApiError";
-import { redis } from "../lib/redis";
+import { evalScript } from "../lib/redis";
 import {
   getStockKey,
   getSortedSetkey,
@@ -194,7 +194,7 @@ async function revertRedisHold({
   // Re-construct the exact zset member string used in ORDER_SCRIPT: `${orderId}:${userId}`
   const zsetMember = `${orderId}:${userId}`;
 
-  return await redis.eval(
+  return await evalScript(
     REVERT_ORDER_SCRIPT,
     [
       getIdempotencyKey(saleId), // KEYS[1]
@@ -225,7 +225,7 @@ export async function postHold(body: PostHoldBody, userId: string) {
     throw new Error("Failed to schedule order expiry. Please try again.");
   }
 
-  const res = (await redis.eval(
+  const res = (await evalScript(
     ORDER_SCRIPT,
     [
       getIdempotencyKey(saleId),

@@ -3,13 +3,13 @@
 ### Create sales
 POST {{baseUrl}}/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhOGNmMGVjYS1lMDU3LTRkNTMtYTE3Yi0zMTk3NjYyOTIxMGYiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3ODg5NTQ2MDAsImV4cCI6MTc4ODk1NTUwMH0.a_JRty-pLKKOtrJp8chDRFe53srb_xvYU3_9vJ4108w
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNzBkNTAwMC03YzQ1LTQ1ZGItOWQwNy0xYjA3NDQzMWE0MzMiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3OTEzNTUyMzQsImV4cCI6MTc5MTk2MDAzNH0.EtNqQbbsjV6Ow-baPRpfOfQs8UY7DAla8JEJwc7Ffs4
 
 {
-    "authorId": "a8cf0eca-e057-4d53-a17b-31976629210f",
-    "productId": "682902ce-e016-42c8-83c1-ee8987b36f7b",
-    "startAt": "2026-10-01T10:00:00Z",
-    "endAt": "2026-10-01T10:30:00Z",
+    "authorId": "070d5000-7c45-45db-9d07-1b074431a433",
+    "productId": "f5ac5211-3b95-432a-ad6c-7c1ee723f67f",
+    "startAt": "2026-10-07T10:00:00Z",
+    "endAt": "2026-10-09T10:30:00Z",
     "stockQuantity": 50,
     "unitPrice": 99.00
 }

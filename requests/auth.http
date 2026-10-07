@@ -10,13 +10,22 @@ Content-Type: application/json
   "password":"flowTestUser@gmail.com"
 }
 
-### Signin
+### Admin Signin
 POST {{baseUrl}}/signin
 Content-Type: application/json
 
 {
-  "email":"Zack_Hansen5@gmail.com",
-  "password":"abc@gmail.com"
+  "email":"admin@gmail.com",
+  "password":"admin@gmail.com"
+}
+
+### User Signin
+POST {{baseUrl}}/signin
+Content-Type: application/json
+
+{
+  "email":"flowTestUser@gmail.com",
+  "password":"flowTestUser@gmail.com"
 }
 
 ### Refresh

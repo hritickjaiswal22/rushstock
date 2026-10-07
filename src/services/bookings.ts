@@ -1,6 +1,6 @@
 import { PostBookingBody } from "../validators/bookings";
 import { prisma } from "../lib/prisma";
-import { redis } from "../lib/redis";
+import { evalScript } from "../lib/redis";
 import { ConflictError, BadRequestError } from "../utils/ApiError";
 import {
   getSortedSetkey,
@@ -126,7 +126,7 @@ async function successfulReservation(
     return order;
   });
 
-  const res = (await redis.eval(
+  const res = (await evalScript(
     RESERVE_SCRIPT,
     [getSortedSetkey(saleId), getBoughtKey(saleId), getPendingKey(saleId)],
     [`${orderId}:${userId}`, userId],
@@ -175,7 +175,7 @@ async function failReservation(
     },
   });
 
-  await redis.eval(
+  await evalScript(
     FAIL_SCRIPT,
     [getSortedSetkey(saleId), getStockKey(saleId), getPendingKey(saleId)],
     [`${orderId}:${userId}`, userId],
