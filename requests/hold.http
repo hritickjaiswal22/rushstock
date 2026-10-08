@@ -1,12 +1,12 @@
-@baseUrl = http://localhost:5000/api/v1/holds
+@baseUrl = http://localhost:5000/api/v1/reserve
 
 ### Create sales
 POST {{baseUrl}}/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NWI3NGI3Ni1lZjIxLTRkYTQtYmUxOC00Yzg5MzI1YTUzMDEiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc5MDgxNjU2OSwiZXhwIjoxNzkxNDIxMzY5fQ.1rrLqGEImcEuIUs7frpJF7rQPqz2aaBkAjLHmu30FNQ
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3ZWJkZjY0YS1lNzdkLTQ4OGEtYjJhNy1kNmI5ODM1ZjYyZTEiLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc5MTM1NTQ2OSwiZXhwIjoxNzkxOTYwMjY5fQ.wXGrMV6DBnu9obGb_Sg9jEkCb_TP7F3WNT-Cn-fAm5Y
 
 {
-    "saleId": "a0399729-bddb-4f3f-b051-985ce6b7c6a9",
-    "quantity": 3,
+    "saleId": "2e29177e-fd3f-45a4-a958-12892228f28c",
+    "quantity": 1,
     "idempotencyId":"b515b3e6-e0f3-4b06-8e13-be7335b63859"
 }

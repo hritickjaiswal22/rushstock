@@ -1,6 +1,8 @@
 import { PostSaleBody } from "../validators/sales";
 import { prisma } from "../lib/prisma";
 import { Prisma } from "../generated/prisma/client";
+import { redis } from "../lib/redis";
+import { getStockKey } from "../utils/redis";
 import { ConflictError } from "../utils/ApiError";
 
 export async function postSale(body: PostSaleBody) {
@@ -20,6 +22,8 @@ export async function postSale(body: PostSaleBody) {
         stockQuantity: true,
       },
     });
+
+    const res = await redis.set(getStockKey(newSale.id), newSale.stockQuantity);
 
     return newSale;
   } catch (error) {

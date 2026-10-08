@@ -1,86 +1,48 @@
-type USER_ROLE = "USER" | "ADMIN"
-
 users {
-    id: UUID; (primary-key,unique,not-null)
-    email: VARCHAR(100); (unique,not-null)
-    name: VARCHAR(100); (not-null)
-    role: USER_ROLE; (not-null,DEFAULT 'USER')
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
+    id (pkey)
+    email (unique)
+    name 
+    password
+    role ENUM ('USER', 'ADMIN') DEFAULT("USER")
+    created_at
+    updated_at
 }
 
 products {
-    id: UUID; (primary-key,unique,not-null)
-    title: VARCHAR(150); (not-null)
-    description: TEXT; (nullable)
-    price: NUMERIC(15,2); (not-null)
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
+    id (pkey)
+    title
+    description
+    price (> 0)
+    created_at
+    updated_at
 }
 
 sales {
-    id: UUID; (primary-key,unique,not-null)
-    author_id: UUID; (foreign-key,not-null)
-    product_id: UUID; (foreign-key,not-null)
-    start_at: TIMESTAMPTZ; (not-null)
-    end_at: TIMESTAMPTZ; (not-null)
-    stock_quantity: INT(+ve only,not-null)
-    unit_price: NUMERIC(15,2); (not-null)
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
+    id (pkey)
+    author_id
+    product_id
+    start_at
+    end_at
+    stock_quantity (>= 0)
+    unit_price (> 0)
+    created_at
+    updated_at
 
-    index on (start,end)
-    (product_id,start,end) must be unique - actually it will be more nuanced that a sale for a product should not be created when another sale is live/upcoming for that same product
+    Index on (start_at,end_at)
+    Index on (product_id,start_at,end_at)
+    Unique (product_id,start_at,end_at)
+    end_at > start_at
+    no overlap gist on product_id,start_at,end_at
 }
 
-bookings {
-    id: UUID; (primary-key,unique,not-null)
-    user_id: UUID; (foreign-key,not-null)
-    sale_id: UUID; (foreign-key,not-null)
-    quantity: SMALLINT; (+ve only,not-null)
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
+orders {
+    id
+    sale_id
+    user_id
+    idempotency_id (unique)
+    quantity (> 0)
+    status ENUM(PENDING, EXPIRED, SUCCESS, FAILED - last 3 are terminal status hence cannot be changed) 
+    expires_at
 
-    (user_id,sale_id) must be unique
+    Partial unique index on (sale_id,user_id) AND status IN ('PENDING', 'SUCCESS')
 }
-
-type HOLD_STATUS = "ACTIVE" | "EXPIRED" | "CONVERTED"
-
-holds {
-    id: UUID; (primary-key,unique,not-null)
-    user_id: UUID; (foreign-key,not-null)
-    sale_id: UUID; (foreign-key,not-null)
-    quantity: SMALLINT; (+ve only,not-null)
-    status: HOLD_STATUS; (not-null, Default ACTIVE)
-    expires_at: TIMESTAMPTZ; (not-null, Default - now() + 5mins)
-    created_at: TIMESTAMPTZ; (not-null)
-    updated_at: TIMESTAMPTZ; (not-null)
-
-    (user_id,sale_id,status) must be unique ;if not possible handle app logic -> Helps handling idempoteny or retries via failures
-    index on (sale_id, user_id) this order only
-}
-
-endpoint - POST /holds {
-    saleId
-    quantity
-}
-
-user_id from auth token
-
-Zod validations for {
-    saleId
-    quantity
-}
-
-And foreign-key constraint checks if user_id,sale_id are valid ids or not
-
-POST service logic
-
-1. Start a transaction
-2. Decrement sale.quantity by req.quantity WHERE sale.quantity >= req.quantity AND sale is live AND sale.id = req.saleId
-3. Check if above update happend if not rollback else
-4. Add a row to holds with above values 
-5. Commit 
-6. Return a response asking to make payment 
-
-Assumption - Since adding (user_id,sale_id,status) must be unique constraint assuming the worker will work properly and timely manner so that users with failed payments or missed windows are able to retry
