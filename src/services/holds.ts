@@ -273,7 +273,6 @@ export async function postHold(body: PostHoldBody, userId: string) {
       WHERE id = ${saleId}::uuid
         AND start_at <= ${now}
         AND end_at > ${now}
-      FOR UPDATE
     `;
 
       const sale = sales[0];

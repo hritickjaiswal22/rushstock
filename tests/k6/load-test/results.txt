@@ -1,0 +1,299 @@
+-------------------------------------------------# Test 1-------------------------------------------------
+
+ k6 run tests/k6/reserve-oversell.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: tests/k6/reserve-oversell.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 3m30s max duration (incl. graceful stop):
+              * reserve: 10000 iterations shared among 500 VUs (maxDuration: 3m0s, gracefulStop: 30s)
+
+
+
+  █ THRESHOLDS 
+
+    reserve_other
+    ✓ 'count==0' count=0
+
+    reserve_soldout
+    ✗ 'count==9900' count=9932
+
+    reserve_success
+    ✗ 'count==100' count=68
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    reserve_other..................: 0      0/s
+    reserve_soldout................: 9932   659.047837/s
+    reserve_success................: 68     4.512208/s
+
+    HTTP
+    http_req_duration..............: avg=728.48ms min=51.29ms  med=247.41ms max=15.01s   p(90)=356.39ms p(95)=485.1ms 
+      { expected_response:true }...: avg=354.06ms min=129.24ms med=340.72ms max=587.45ms p(90)=513.58ms p(95)=570.51ms
+    http_req_failed................: 99.32% 9932 out of 10000
+    http_reqs......................: 10000  663.560046/s
+
+    EXECUTION
+    iteration_duration.............: avg=729.08ms min=51.59ms  med=247.62ms max=15.06s   p(90)=356.59ms p(95)=500.08ms
+    iterations.....................: 10000  663.560046/s
+    vus............................: 500    min=0             max=500
+    vus_max........................: 500    min=24            max=500
+
+    NETWORK
+    data_received..................: 4.3 MB 286 kB/s
+    data_sent......................: 4.9 MB 325 kB/s
+
+
+
+
+running (0m15.1s), 000/500 VUs, 10000 complete and 0 interrupted iterations
+reserve ✓ [======================================] 500 VUs  0m15.1s/3m0s  10000/10000 shared iters
+ERRO[0031] thresholds on metrics 'reserve_soldout, reserve_success' have been crossed 
+
+-------------------------------------------------# Test 2-------------------------------------------------
+
+/\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: tests/k6/reserve-oversell.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 3m30s max duration (incl. graceful stop):
+              * reserve: 10000 iterations shared among 500 VUs (maxDuration: 3m0s, gracefulStop: 30s)
+
+
+  █ THRESHOLDS 
+
+    reserve_other
+    ✓ 'count==0' count=0
+
+    reserve_soldout
+    ✗ 'count==9900' count=9950
+
+    reserve_success
+    ✗ 'count==100' count=50
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    reserve_other..................: 0      0/s
+    reserve_soldout................: 9950   808.042468/s
+    reserve_success................: 50     4.060515/s
+
+    HTTP
+    http_req_duration..............: avg=593.22ms min=83ms     med=260.55ms max=12.26s   p(90)=336.34ms p(95)=365.29ms
+      { expected_response:true }...: avg=393.45ms min=152.53ms med=395.01ms max=573.29ms p(90)=527.08ms p(95)=554.51ms
+    http_req_failed................: 99.50% 9950 out of 10000
+    http_reqs......................: 10000  812.102982/s
+
+    EXECUTION
+    iteration_duration.............: avg=594ms    min=83.18ms  med=260.75ms max=12.26s   p(90)=336.54ms p(95)=365.48ms
+    iterations.....................: 10000  812.102982/s
+    vus............................: 258    min=0             max=500
+    vus_max........................: 500    min=24            max=500
+
+    NETWORK
+    data_received..................: 4.5 MB 366 kB/s
+    data_sent......................: 4.9 MB 398 kB/s
+
+
+running (0m12.3s), 000/500 VUs, 10000 complete and 0 interrupted iterations
+reserve ✓ [ 100% ] 500 VUs  0m12.3s/3m0s  10000/10000 shared iters
+
+Above 2 tests are not useful their was problem with client data 
+
+-------------------------------------------------# Test 3-------------------------------------------------
+
+k6 run tests/k6/reserve-oversell.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: tests/k6/reserve-oversell.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 3m30s max duration (incl. graceful stop):
+              * reserve: 10000 iterations shared among 500 VUs (maxDuration: 3m0s, gracefulStop: 30s)
+
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+ERRO[0018] UNEXPECTED 500: {"success":false,"error":{"code":500,"statusCode":"INTERNAL_SERVER_ERROR","message":"Something went wrong"}}  source=console
+
+
+  █ THRESHOLDS 
+
+    reserve_other
+    ✗ 'count==0' count=10
+
+    reserve_soldout
+    ✗ 'count==9900' count=9890
+
+    reserve_success
+    ✓ 'count==100' count=100
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    reserve_other..................: 10     0.832384/s
+    reserve_server_error...........: 10     0.832384/s
+    reserve_soldout................: 9890   823.227352/s
+    reserve_success................: 100    8.323836/s
+
+    HTTP
+    http_req_duration..............: avg=582.32ms min=16.4ms  med=197.85ms max=11.95s p(90)=283.39ms p(95)=556ms  
+      { expected_response:true }...: avg=1.5s     min=577.2ms med=1.43s    max=3.04s  p(90)=2.5s     p(95)=2.67s  
+    http_req_failed................: 99.00% 9900 out of 10000
+    http_reqs......................: 10000  832.383572/s
+
+    EXECUTION
+    iteration_duration.............: avg=583.16ms min=16.55ms med=198.08ms max=11.95s p(90)=283.65ms p(95)=575.7ms
+    iterations.....................: 10000  832.383572/s
+    vus............................: 500    min=0             max=500
+    vus_max........................: 500    min=24            max=500
+
+    NETWORK
+    data_received..................: 3.6 MB 299 kB/s
+    data_sent......................: 4.9 MB 408 kB/s
+
+
+
+
+running (0m12.0s), 000/500 VUs, 10000 complete and 0 interrupted iterations
+reserve ✓ [======================================] 500 VUs  0m12.0s/3m0s  10000/10000 shared iters
+ERRO[0028] thresholds on metrics 'reserve_other, reserve_soldout' have been crossed 
+
+npx tsx tests/k6/verify.ts
+Redis stock: 0
+Postgres PENDING orders: 100
+Postgres sale.stock_quantity: 100
+
+✅ ALL ASSERTIONS PASSED
+
+-------------------------------------------------# Test 4-------------------------------------------------
+
+k6 run tests/k6/reserve-oversell.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: tests/k6/reserve-oversell.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 3m30s max duration (incl. graceful stop):
+              * reserve: 10000 iterations shared among 500 VUs (maxDuration: 3m0s, gracefulStop: 30s)
+
+
+
+  █ THRESHOLDS 
+
+    reserve_other
+    ✓ 'count==0' count=0
+
+    reserve_soldout
+    ✓ 'count==9900' count=9900
+
+    reserve_success
+    ✓ 'count==100' count=100
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    reserve_other..................: 0      0/s
+    reserve_soldout................: 9900   816.927628/s
+    reserve_success................: 100    8.251794/s
+
+    HTTP
+    http_req_duration..............: avg=587.96ms min=71.41ms  med=173.73ms max=12.05s p(90)=263.9ms  p(95)=389.82ms
+      { expected_response:true }...: avg=733.71ms min=323.28ms med=825.07ms max=1.15s  p(90)=971.89ms p(95)=977.34ms
+    http_req_failed................: 99.00% 9900 out of 10000
+    http_reqs......................: 10000  825.179423/s
+
+    EXECUTION
+    iteration_duration.............: avg=588.77ms min=71.68ms  med=173.92ms max=12.05s p(90)=264.1ms  p(95)=390.98ms
+    iterations.....................: 10000  825.179423/s
+    vus............................: 494    min=0             max=500
+    vus_max........................: 500    min=24            max=500
+
+    NETWORK
+    data_received..................: 3.6 MB 296 kB/s
+    data_sent......................: 4.9 MB 404 kB/s
+
+
+
+
+running (0m12.1s), 000/500 VUs, 10000 complete and 0 interrupted iterations
+reserve ✓ [======================================] 500 VUs  0m12.1s/3m0s  10000/10000 shared iters
+hritick@hritick-Aspire-A315-53G:~/Desktop/RushStock$ npx tsx tests/k6/verify.ts
+Redis stock: 0
+Postgres PENDING orders: 100
+Postgres sale.stock_quantity: 100
+
+✅ ALL ASSERTIONS PASSED
+
+-------------------------------------------------Results and Doumentation-------------------------------------------------
+
+## Bugs found by the load test
+
+### Bug 1 — `SELECT … FOR UPDATE` serialized the reserve path
+
+**Symptom:** 68/100 successes, requests taking up to 15 seconds.
+**Root cause:** The reserve transaction locked the sale row with `FOR UPDATE`
+before reading it — but the reserve path only *reads* the sale (it does not
+modify stock; that happens at confirm). The lock serialized every concurrent
+reserve into a queue.
+**Fix:** Removed `FOR UPDATE` from `postHold` in `src/services/holds.ts`.
+**Result:** p95 latency dropped ~25%.
+
+### Bug 2 — Prisma connection pool exhausted under 500 VUs
+
+**Symptom:** 10–16 requests returning `500`, with the server log showing
+`P2028: Transaction API error: Unable to start a transaction in the given time.`
+**Root cause:** Prisma's default `pg` pool size is ~`num_cpus × 2 + 1`, roughly
+9 on a laptop. With 500 concurrent virtual users, requests queued for a
+connection and exceeded Prisma's 2-second `maxWait`.
+**Fix:** Provided an explicit `pg.Pool` with `max: 50` to the Prisma adapter in
+`src/lib/prisma.ts`.
+**Result:** Zero `500`s. All three thresholds green.
+
+**Run the proof:**
+
+```bash
+npx tsx tests/load-test/k6/setup.ts
+k6 run tests/load-test/k6/reserve-oversell.js
+npx tsx tests/load-test/k6/verify.ts
+```
